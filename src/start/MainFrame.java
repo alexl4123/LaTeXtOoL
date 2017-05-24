@@ -23,7 +23,11 @@ import javafx.scene.text.FontWeight;
 public class MainFrame extends Application {
 
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
+		/* TODO
+		 * Rectangle
+		 * 		 
+		 */ 
+		 
 		launch();
 	}
 

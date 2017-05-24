@@ -22,9 +22,10 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Line;
 import tools.tLine;
+import tools.tText;
 
 /*TODO
- * Make LaTeX output
+ * Chooser between items
  * Text
  * Rectangle
  * Arrow
@@ -40,11 +41,31 @@ public class DArea extends Canvas {
 	 * dYLine...current nearest Grid dX, dY are for Dragging
 	 */
 	private double _Y, _X, dParamX1, dParamY1, XGrid, YGrid, dXLine, dYLine, dX, dY;
+
+	private String sTexts;
 	private int iSelect;
+
+	/*
+	 * under Cons...when a Line is drawn or a Text is being written
+	 * bSelected...if a Object has been selected
+	 */
 	private Boolean underCons, bSelected;
+
+	/*
+	 * all Objects are saved here
+	 */
 	private ArrayList<Object> ObjectiveCList;
+
+	/*
+	 * for the Grid
+	 */
 	private ArrayList<tLine> HorizontalList, VerticalList;
 	public Boolean setAlt;
+
+	/*
+	 * iChoose...for choosing between Text, Line, etc.
+	 */
+	public int iChoose;
 
 	public DArea() {
 
@@ -56,8 +77,6 @@ public class DArea extends Canvas {
 		underCons = false;
 		ObjectiveCList = new ArrayList<Object>();
 		gc = this.getGraphicsContext2D();
-		this.widthProperty().addListener(observable -> redraw());
-		this.heightProperty().addListener(observable -> redraw());
 		dX = 0;
 		dY = 0;
 
@@ -83,35 +102,59 @@ public class DArea extends Canvas {
 						double XMouse, YMouse;
 						XMouse = event.getX() / dParamX1;
 						YMouse = event.getY() / dParamY1;
-						tLine L1 = (tLine) O;
-						System.out.println("Hit-Try-X" + XMouse + ":" + YMouse + "WHy" );
-						if (L1.Hit(XMouse, YMouse, XGrid, YGrid)) {
-							System.out.println("Hit-Complete");
-							dX = 0;
-							dX = 0;
-							bSelected = true;
-							iSelect = i;
-							break;
-						}else {
-							bSelected = false;
+						if (O instanceof tLine) {
+							tLine L1 = (tLine) O;
+							if (L1.Hit(XMouse, YMouse, XGrid, YGrid)) {
+								dX = 0;
+								dX = 0;
+								bSelected = true;
+								iSelect = i;
+								break;
+							} else {
+								bSelected = false;
+							}
+						} else if (O instanceof tText) {
+							tText T1 = (tText) O;
+
+							if (T1.Hit(XMouse, YMouse, XGrid, YGrid)) {
+								System.out.println("Hit");
+								dX = 0;
+								dX = 0;
+								bSelected = true;
+								iSelect = i;
+								break;
+							}
 						}
+
 					}
 				} else if (underCons && (event.getButton() == MouseButton.PRIMARY)) {
 					int i = ObjectiveCList.size();
-					tLine LineX = (tLine) ObjectiveCList.get(i - 1);
-					LineX.setX2((float) (dXLine));
-					LineX.setY2((float) (dYLine));
-					ObjectiveCList.set(i - 1, LineX);
-					underCons = false;
-					bSelected = false;
-				} else if (event.getButton() == MouseButton.PRIMARY) {
-					tLine Line = new tLine();
-					Line.setX1((float) (dXLine));
-					Line.setY1((float) (dYLine));
+					if (ObjectiveCList.get(i - 1) instanceof tLine) {
+						tLine LineX = (tLine) ObjectiveCList.get(i - 1);
+						LineX.setX2((float) (dXLine));
+						LineX.setY2((float) (dYLine));
+						ObjectiveCList.set(i - 1, LineX);
+						underCons = false;
+						bSelected = false;
+					}
 
-					ObjectiveCList.add(Line);
-					bSelected = false;
-					underCons = true;
+				} else if (event.getButton() == MouseButton.PRIMARY) {
+					snapGrid(event);
+					System.out.println(iChoose);
+					switch (iChoose) {
+					case 0: {
+						newLine();
+					}
+						break;
+					case 1: {
+						newText();
+					}
+						break;
+					case 2: {
+					}
+						break;
+					}
+
 				} else {
 
 				}
@@ -130,42 +173,67 @@ public class DArea extends Canvas {
 				snapGrid(event);
 
 				if (bSelected && (event.getButton() != MouseButton.PRIMARY)) {
-					
-					tLine L = (tLine) ObjectiveCList.get(iSelect - 1);
-					double XDrag = event.getX() / dParamX1;
-					double YDrag = event.getY() / dParamY1;
-					if (L.resize1(XDrag, YDrag, XGrid, YGrid) && setAlt) {
-						double X = L.getX1();
-						double Y = L.getY1();
-						snapGrid(event);
-						dX = (dXLine);
-						dY = dYLine;
-						double dX2 = dX - X;
-						double dY2 = dY - Y;
-						L.setX1((float) ((L.getX1() + dX2)));
-						L.setY1((float) ((L.getY1() + dY2)));
-						gc.strokeLine((L.getX1()) * dParamX1, (L.getY1()) * dParamY1, (L.getX2()) * dParamX1,
-								(L.getY2()) * dParamY1);
-						
-						dX = 0;
-						dY = 0;
 
-					} else if (L.resize2(XDrag, YDrag, XGrid, YGrid) && setAlt) {
-						double X = L.getX2();
-						double Y = L.getY2();
-						snapGrid(event);
-						dX = (dXLine);
-						dY = dYLine;
-						double dX2 = dX - X;
-						double dY2 = dY - Y;
-						L.setX2((float) ((L.getX2() + dX2)));
-						L.setY2((float) ((L.getY2() + dY2)));
-						gc.strokeLine((L.getX1()) * dParamX1, (L.getY1()) * dParamY1, (L.getX2()) * dParamX1,
-								(L.getY2()) * dParamY1);
-						
-						dX = 0;
-						dY = 0;
-					} else {
+					if (ObjectiveCList.get(iSelect - 1) instanceof tLine) {
+						tLine L = (tLine) ObjectiveCList.get(iSelect - 1);
+						double XDrag = event.getX() / dParamX1;
+						double YDrag = event.getY() / dParamY1;
+						if (L.resize1(XDrag, YDrag, XGrid, YGrid) && setAlt) {
+							double X = L.getX1();
+							double Y = L.getY1();
+							snapGrid(event);
+							dX = (dXLine);
+							dY = dYLine;
+							double dX2 = dX - X;
+							double dY2 = dY - Y;
+							L.setX1((float) ((L.getX1() + dX2)));
+							L.setY1((float) ((L.getY1() + dY2)));
+							gc.strokeLine((L.getX1()) * dParamX1, (L.getY1()) * dParamY1, (L.getX2()) * dParamX1,
+									(L.getY2()) * dParamY1);
+
+							dX = 0;
+							dY = 0;
+
+						} else if (L.resize2(XDrag, YDrag, XGrid, YGrid) && setAlt) {
+							double X = L.getX2();
+							double Y = L.getY2();
+							snapGrid(event);
+							dX = (dXLine);
+							dY = dYLine;
+							double dX2 = dX - X;
+							double dY2 = dY - Y;
+							L.setX2((float) ((L.getX2() + dX2)));
+							L.setY2((float) ((L.getY2() + dY2)));
+							gc.strokeLine((L.getX1()) * dParamX1, (L.getY1()) * dParamY1, (L.getX2()) * dParamX1,
+									(L.getY2()) * dParamY1);
+
+							dX = 0;
+							dY = 0;
+						} else {
+							double X = dX;
+							double Y = dY;
+							snapGrid(event);
+							dX = (dXLine);
+							dY = dYLine;
+							double dX2 = dX - X;
+							double dY2 = dY - Y;
+
+							if (Math.abs(dX2) < 10 && Math.abs(dY2) < 10) {
+								L.setX1((float) ((L.getX1() + dX2)));
+								L.setY1((float) ((L.getY1() + dY2)));
+								L.setX2((float) ((L.getX2() + dX2)));
+								L.setY2((float) ((L.getY2() + dY2)));
+								gc.strokeLine((L.getX1()) * dParamX1, (L.getY1()) * dParamY1, (L.getX2()) * dParamX1,
+										(L.getY2()) * dParamY1);
+							}
+
+						}
+
+					} // -----------Text Move
+					else if (ObjectiveCList.get(iSelect - 1) instanceof tText) {
+						tText Text = (tText) ObjectiveCList.get(iSelect - 1);
+						double XDrag = event.getX() / dParamX1;
+						double YDrag = event.getY() / dParamY1;
 						double X = dX;
 						double Y = dY;
 						snapGrid(event);
@@ -173,27 +241,23 @@ public class DArea extends Canvas {
 						dY = dYLine;
 						double dX2 = dX - X;
 						double dY2 = dY - Y;
-						
-						if(Math.abs(dX2) < 10 && Math.abs(dY2) < 10)
-						{
-							L.setX1((float) ((L.getX1() + dX2)));
-							L.setY1((float) ((L.getY1() + dY2)));
-							L.setX2((float) ((L.getX2() + dX2)));
-							L.setY2((float) ((L.getY2() + dY2)));
-							gc.strokeLine((L.getX1()) * dParamX1, (L.getY1()) * dParamY1, (L.getX2()) * dParamX1,
-									(L.getY2()) * dParamY1);
+
+						if (Math.abs(dX2) < 10 && Math.abs(dY2) < 10) {
+							Text.setX((float) ((Text.getX() + dX2)));
+							Text.setY((float) ((Text.getY() + dY2)));
+
 						}
-						
+
 					}
 
-				} else if ((underCons) && (event.getButton() == MouseButton.PRIMARY)) {
+				} else if ((underCons) && (event.getButton() == MouseButton.PRIMARY) && (iChoose == 0)) {
 
 					snapGrid(event);
 					int i = ObjectiveCList.size();
 					tLine Line1 = (tLine) ObjectiveCList.get(i - 1);
 					gc.strokeLine(dParamX1 * Line1.getX1(), dParamY1 * Line1.getY1(), dParamX1 * dXLine,
 							dParamY1 * dYLine);
-				} else if (event.getButton() == MouseButton.PRIMARY) {
+				} else if (event.getButton() == MouseButton.PRIMARY && (iChoose == 0)) {
 					tLine Line = new tLine();
 					Line.setX1((float) (dXLine));
 					Line.setY1((float) (dYLine));
@@ -208,33 +272,6 @@ public class DArea extends Canvas {
 			}
 		});
 
-		this.setOnMouseDragReleased(new EventHandler<MouseEvent>() {
-
-			@Override
-			public void handle(MouseEvent event) {
-				if (underCons && !bSelected) {
-					snapGrid(event);
-					int i = ObjectiveCList.size();
-					tLine LineX = (tLine) ObjectiveCList.get(i - 1);
-					LineX.setX2((float) (dXLine));
-					LineX.setY2((float) (dYLine));
-					ObjectiveCList.set(i - 1, LineX);
-					underCons = false;
-					bSelected = false;
-
-				} else {
-					tLine L = (tLine) ObjectiveCList.get(iSelect - 1);
-					double XM = event.getX();
-					double YM = event.getY();
-					L.setX1((float) (L.getX1() + XM));
-					L.setY1((float) (L.getY1() + YM));
-					L.setX2((float) (L.getX2() + XM));
-					L.setY2((float) (L.getY2() + YM));
-				}
-
-			}
-		});
-
 		this.setOnMouseMoved(new EventHandler<MouseEvent>() {
 
 			@Override
@@ -244,10 +281,12 @@ public class DArea extends Canvas {
 				if (underCons) {
 					snapGrid(event);
 					int i = ObjectiveCList.size();
-					tLine Line1 = (tLine) ObjectiveCList.get(i - 1);
+					if (ObjectiveCList.get(i - 1) instanceof tLine) {
+						tLine Line1 = (tLine) ObjectiveCList.get(i - 1);
 
-					gc.strokeLine(dParamX1 * Line1.getX1(), dParamY1 * Line1.getY1(), dParamX1 * dXLine,
-							dParamY1 * dYLine);
+						gc.strokeLine(dParamX1 * Line1.getX1(), dParamY1 * Line1.getY1(), dParamX1 * dXLine,
+								dParamY1 * dYLine);
+					}
 
 				}
 				drawObjects();
@@ -257,10 +296,79 @@ public class DArea extends Canvas {
 		});
 
 	}
+	// ----------------------------------------------------------------------------
 
-	private void redraw() {
-		// gc.fillRect(0, 0, this.getWidth(), this.getHeight());
+	// Setting a new Line
+	public void newLine() {
+		tLine Line = new tLine();
+		Line.setX1((float) (dXLine));
+		Line.setY1((float) (dYLine));
+
+		ObjectiveCList.add(Line);
+		bSelected = false;
+		underCons = true;
 	}
+
+	// setting a new Text
+	public void newText() {
+		tText Text = new tText();
+		Text.setX((float) dXLine);
+		Text.setY((float) dYLine);
+		sTexts = "";
+		Text.setText(sTexts);
+		underCons = true;
+		ObjectiveCList.add(Text);
+		bSelected = false;
+
+	}
+
+	// -------------------------------------------------------------------------------
+
+	// set the Object
+	public void setObjectDrawn(int i) {
+		iChoose = i;
+	}
+
+	// for creating Text
+	public void setString(String s) {
+		if (iChoose == 1 && underCons) {
+			int iSize = ObjectiveCList.size();
+			tText Text = (tText) ObjectiveCList.get(iSize - 1);
+
+			sTexts = sTexts + s;
+			Text.setText(sTexts);
+
+			gc.clearRect(0, 0, _X, _Y);
+			drawObjects();
+
+		}
+	}
+
+	// Backslash
+	public void setStringB() {
+		if (iChoose == 1 && underCons) {
+			try {
+				int iSize = ObjectiveCList.size();
+				tText Text = (tText) ObjectiveCList.get(iSize - 1);
+
+				int i = sTexts.length();
+				sTexts = sTexts.substring(0, i - 1);
+				Text.setText(sTexts);
+
+				gc.clearRect(0, 0, _X, _Y);
+				drawObjects();
+			} catch (Exception ex) {
+
+			}
+
+		}
+	}
+
+	public void finishString() {
+		underCons = false;
+	}
+
+	// --------------------------------------------------------------------------------------
 
 	// After Window Resize
 	public void setXY(double x, double y) {
@@ -314,11 +422,17 @@ public class DArea extends Canvas {
 	public void drawObjects() {
 		gc.setLineWidth(2);
 		for (Object x : ObjectiveCList) {
-			tLine Line = (tLine) x;
-			if (Line.getX2() != 0) {
-				gc.strokeLine(dParamX1 * Line.getX1(), dParamY1 * Line.getY1(), dParamX1 * Line.getX2(),
-						dParamY1 * Line.getY2());
+			if (x instanceof tLine) {
+				tLine Line = (tLine) x;
+				if (Line.getX2() != 0) {
+					gc.strokeLine(dParamX1 * Line.getX1(), dParamY1 * Line.getY1(), dParamX1 * Line.getX2(),
+							dParamY1 * Line.getY2());
+				}
+			} else if (x instanceof tText) {
+				tText Text = (tText) x;
+				gc.strokeText(Text.getST(), dParamX1 * Text.getX(), dParamY1 * Text.getY());
 			}
+
 		}
 		gc.setLineWidth(0.5);
 		gc.setStroke(Color.DARKORANGE);
@@ -338,10 +452,14 @@ public class DArea extends Canvas {
 			gc.setStroke(Color.BLUEVIOLET);
 			gc.setLineWidth(3);
 			try {
-				tLine L = (tLine) ObjectiveCList.get(iSelect - 1);
-				gc.strokeLine(L.getX1() * dParamX1, dParamY1 * L.getY1(), dParamX1 * L.getX2(), dParamY1 * L.getY2());
-				gc.fillOval(dParamX1 * (L.getX1() - 2), dParamY1 * (L.getY1() - 2), 4 * dParamX1, 4 * dParamY1);
-				gc.fillOval(dParamX1 * (L.getX2() - 2), dParamY1 * (L.getY2() - 2), 4 * dParamX1, 4 * dParamY1);
+				if (ObjectiveCList.get(iSelect - 1) instanceof tLine) {
+					tLine L = (tLine) ObjectiveCList.get(iSelect - 1);
+					gc.strokeLine(L.getX1() * dParamX1, dParamY1 * L.getY1(), dParamX1 * L.getX2(),
+							dParamY1 * L.getY2());
+					gc.fillOval(dParamX1 * (L.getX1() - 2), dParamY1 * (L.getY1() - 2), 4 * dParamX1, 4 * dParamY1);
+					gc.fillOval(dParamX1 * (L.getX2() - 2), dParamY1 * (L.getY2() - 2), 4 * dParamX1, 4 * dParamY1);
+				}
+
 			} catch (Exception ex) {
 
 			}
@@ -376,16 +494,32 @@ public class DArea extends Canvas {
 		}
 
 	}
-	
-	public ArrayList<Object> getObjectiveList()
-	{
+
+	public ArrayList<Object> getObjectiveList() {
 		return ObjectiveCList;
+	}
+
+	// ------------------------------------------------------------------------
+
+	// if sth. is drawn and you want to delete it
+	public void setESC() {
+		if (underCons) {
+			int i = ObjectiveCList.size();
+			ObjectiveCList.remove(i - 1);
+			bSelected = false;
+			underCons = false;
+
+			gc.clearRect(0, 0, _X, _Y);
+			drawObjects();
+
+		}
+
 	}
 
 	// Delete selected item
 	public void Delete() {
 		try {
-
+			System.out.println("Del");
 			ObjectiveCList.remove(iSelect - 1);
 			iSelect--;
 			gc.clearRect(0, 0, _X, _Y);
