@@ -13,6 +13,7 @@ tables, flow-diagramms / similar drawings.
 
 to work:
 download from Eclipse-Marketplace: e(fx)clipse
+Import the ZIP file (only the ZIP!!!)
 
 For further details or install from website:
 http://www.eclipse.org/efxclipse/install.html
